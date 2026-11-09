@@ -1,0 +1,75 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import dotenv from 'dotenv';
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import { errorHandler } from './middleware/errorHandler';
+import { requestLogger } from './middleware/requestLogger';
+import { apiKeyAuth } from './middleware/apiKeyAuth';
+import { rateLimiter } from './middleware/rateLimiter';
+import { setupRoutes } from './routes';
+
+dotenv.config();
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Security middleware
+app.use(helmet());
+// CORS: allow frontend origin for WebSocket. Avoid origin:'*' with credentials (invalid per spec)
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
+  : ['http://localhost:3080', 'http://localhost:3000', 'http://127.0.0.1:3080', 'http://127.0.0.1:3000'];
+app.use(cors({
+  origin: corsOrigins.length === 1 ? corsOrigins[0] : corsOrigins,
+  credentials: true
+}));
+
+// Body parsing
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Request logging
+app.use(requestLogger);
+
+// Health check endpoint (no auth required)
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// WebSocket routes (Socket.io) - no auth middleware as Socket.io handles auth in handshake
+// Socket.io connections go directly to detection-api service
+const detectionApiUrl = process.env.DETECTION_API_URL || 'http://detection-api:3001';
+app.use('/socket.io', createProxyMiddleware({
+  target: detectionApiUrl,
+  changeOrigin: true,
+  ws: true, // Enable WebSocket support
+  logLevel: process.env.NODE_ENV === 'development' ? 'debug' : 'warn',
+  onProxyReq: (proxyReq: any, req: any) => {
+    // Forward authentication headers for WebSocket upgrade
+    const apiKey = req.headers['x-api-key'];
+    const orgId = req.headers['x-organization-id'];
+    if (apiKey) {
+      proxyReq.setHeader('X-API-Key', apiKey);
+    }
+    if (orgId) {
+      proxyReq.setHeader('X-Organization-ID', orgId);
+    }
+  },
+}));
+
+// API routes
+app.use(apiKeyAuth, rateLimiter, setupRoutes());
+
+// Error handling
+app.use(errorHandler);
+
+app.listen(PORT, () => {
+  console.log(`API Gateway running on port ${PORT}`);
+
+  // Warn about insecure JWT secret in development
+  const jwtSecret = process.env.JWT_SECRET || '';
+  if (!jwtSecret || jwtSecret.includes('change') || jwtSecret.includes('CHANGE') || jwtSecret.length < 32) {
+    console.warn('WARNING: JWT_SECRET is not set or uses an insecure default. Set a strong secret before deploying to production.');
+  }
+});

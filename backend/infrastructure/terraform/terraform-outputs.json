@@ -1,0 +1,115 @@
+{
+  "alb_arn": {
+    "sensitive": false,
+    "type": "string",
+    "value": "arn:aws:elasticloadbalancing:ap-south-1:047385030558:loadbalancer/app/phishing-detection-alb-dev/57091a8d6d853a9a"
+  },
+  "alb_dns_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "phishing-detection-alb-dev-1913904727.ap-south-1.elb.amazonaws.com"
+  },
+  "db_endpoint": {
+    "sensitive": true,
+    "type": "string",
+    "value": "phishing-detection-db-dev.cvgyusk0eoh5.ap-south-1.rds.amazonaws.com:5432"
+  },
+  "db_host": {
+    "sensitive": false,
+    "type": "string",
+    "value": "phishing-detection-db-dev.cvgyusk0eoh5.ap-south-1.rds.amazonaws.com"
+  },
+  "ecs_cluster_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "arn:aws:ecs:ap-south-1:047385030558:cluster/phishing-detection-cluster-dev"
+  },
+  "ecs_cluster_name": {
+    "sensitive": false,
+    "type": "string",
+    "value": "phishing-detection-cluster-dev"
+  },
+  "ecs_service_names": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "api_gateway": "string",
+        "detection_api": "string",
+        "extension_api": "string",
+        "threat_intel": "string"
+      }
+    ],
+    "value": {
+      "api_gateway": "phishing-detection-api-gateway-dev",
+      "detection_api": "phishing-detection-detection-api-dev",
+      "extension_api": "phishing-detection-extension-api-dev",
+      "threat_intel": "phishing-detection-threat-intel-dev"
+    }
+  },
+  "private_subnet_ids": {
+    "sensitive": false,
+    "type": [
+      "tuple",
+      [
+        "string",
+        "string",
+        "string"
+      ]
+    ],
+    "value": [
+      "subnet-087c625da8d2d7f2f",
+      "subnet-08f063c6bb7a5aa9f",
+      "subnet-0bd652cdff7425566"
+    ]
+  },
+  "public_subnet_ids": {
+    "sensitive": false,
+    "type": [
+      "tuple",
+      [
+        "string",
+        "string",
+        "string"
+      ]
+    ],
+    "value": [
+      "subnet-0f1a18936e190e5f8",
+      "subnet-023db72d55d19e476",
+      "subnet-016d01e67c7f76c6a"
+    ]
+  },
+  "redis_endpoint": {
+    "sensitive": false,
+    "type": "string",
+    "value": "master.phishing-detection-redis-dev.awvfju.aps1.cache.amazonaws.com"
+  },
+  "redis_port": {
+    "sensitive": false,
+    "type": "number",
+    "value": 6379
+  },
+  "s3_buckets": {
+    "sensitive": false,
+    "type": [
+      "object",
+      {
+        "artifacts": "string",
+        "logs": "string",
+        "models": "string",
+        "training": "string"
+      }
+    ],
+    "value": {
+      "artifacts": "phishing-detection-artifacts-dev-047385030558",
+      "logs": "phishing-detection-logs-dev-047385030558",
+      "models": "phishing-detection-models-dev-047385030558",
+      "training": "phishing-detection-training-data-dev-047385030558"
+    }
+  },
+  "vpc_id": {
+    "sensitive": false,
+    "type": "string",
+    "value": "vpc-0082802261267ec08"
+  }
+}

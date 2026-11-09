@@ -1,0 +1,111 @@
+# Dependencies
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+*.egg
+
+# Python virtual environments (comprehensive coverage)
+venv/
+.venv/
+env/
+ENV/
+virtualenv/
+.virtualenv/
+*venv/
+*env/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment variables - ignore all except .env.example
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+!.env.example
+
+# Terraform sensitive files
+*.tfvars
+!*.tfvars.example
+backend.tfvars
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# AWS credentials and secrets
+.aws/
+*.pem
+*.key
+*.crt
+*-credentials.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+
+# Docker
+docker-compose.override.yml
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# AWS credentials and secrets
+.aws/
+*.pem
+*.key
+*.crt
+*-credentials.json
+
+# Backup files
+*.backup
+*.backup2
+*.bak
+
+# ML Services - Datasets and Models
+# Ignore all dataset directories in ML services
+ml-services/**/data/
+
+
+# Ignore CSV dataset files in ML services
+ml-services/**/*.csv
+!ml-services/**/*.csv.example
+
+# ML model weights (not source code)
+ml-services/*/models/phishing-detector/
+ml-services/*/models/ai-detector/
+ml-services/*/models/gnn-domain-classifier/
+ml-services/*/models/brand-classifier/
+ml-services/*/models/brand-database/

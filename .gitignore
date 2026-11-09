@@ -1,0 +1,64 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files and credentials (never commit secrets)
+.env*
+!.env.example
+!*.env.example
+.env.credentials
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+virtualenv/
+.virtualenv/
+*.egg-info/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# ML Services - Datasets and Models
+# Ignore all dataset directories in ML services
+backend/ml-services/**/data/
+
+
+# Ignore CSV dataset files in ML services
+backend/ml-services/**/*.csv
+!backend/ml-services/**/*.csv.example
+
+# External cloned repositories (PhishIntention, URLNet, etc.)
+external/
+
+# Cursor IDE
+.cursor/
+.cursor/plans
+# ML model weights (not source code)
+backend/ml-services/*/models/phishing-detector/
+backend/ml-services/*/models/ai-detector/
+backend/ml-services/*/models/gnn-domain-classifier/
+backend/ml-services/*/models/brand-classifier/
+backend/ml-services/*/models/brand-database/

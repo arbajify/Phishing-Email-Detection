@@ -1,0 +1,42 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "strict": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "baseUrl": ".",
+    "paths": {
+      "../../shared/*": ["../../shared/*"],
+      "../../shared/database": ["../../shared/database/index.ts"],
+      "../../shared/database/*": ["../../shared/database/*"]
+    }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests",
+    "**/tests",
+    "**/tests/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/*.spec.ts",
+    "**/*.spec.tsx",
+    "**/__tests__",
+    "**/__tests__/**",
+    "**/__mocks__",
+    "**/__mocks__/**"
+  ],
+  "ts-node": {
+    "skipLibCheck": true
+  },
+  "typeRoots": ["./node_modules/@types", "./src/types"]
+}

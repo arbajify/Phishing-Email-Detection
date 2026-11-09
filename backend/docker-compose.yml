@@ -1,0 +1,321 @@
+﻿# Docker Compose configuration for Real-Time AI/ML-Based Phishing Detection System
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: phishing_detection
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./shared/database/init:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6381:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ./api-gateway/Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - CORS_ORIGIN=http://localhost:3080,http://localhost:3000,http://127.0.0.1:3080,http://127.0.0.1:3000
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/phishing_detection
+      - MONGODB_URL=mongodb://mongodb:27017/phishing_detection
+      - REDIS_URL=redis://redis:6379
+      - DETECTION_API_URL=http://detection-api:3001
+      - THREAT_INTEL_URL=http://threat-intel:3002
+      - EXTENSION_API_URL=http://extension-api:3003
+      - SANDBOX_SERVICE_URL=http://sandbox-service:3004
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+
+  detection-api:
+    build:
+      context: .
+      dockerfile: ./core-services/detection-api/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/phishing_detection
+      - REDIS_URL=redis://redis:6379
+      - THREAT_INTEL_URL=http://threat-intel:3002
+      - SANDBOX_SERVICE_URL=http://sandbox-service:3004
+      - NLP_SERVICE_URL=http://nlp-service:8000
+      - URL_SERVICE_URL=http://url-service:8001
+      - VISUAL_SERVICE_URL=http://visual-service:8002
+      - LOG_LEVEL=info
+      - PORT=3001
+      - ENABLE_WEBSOCKET=${ENABLE_WEBSOCKET:-true}
+      - CORS_ORIGINS=http://localhost:3080,http://localhost:3000,http://127.0.0.1:3080,http://127.0.0.1:3000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nlp-service:
+        condition: service_healthy
+      url-service:
+        condition: service_healthy
+      visual-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  threat-intel:
+    profiles:
+      - full
+    build:
+      context: .
+      dockerfile: ./core-services/threat-intel/Dockerfile
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/phishing_detection
+      - REDIS_URL=redis://redis:6379
+      - MISP_URL=${MISP_URL:-}
+      - MISP_API_KEY=${MISP_API_KEY:-}
+      - OTX_API_KEY=${OTX_API_KEY:-}
+      - VIRUSTOTAL_API_KEY=${VIRUSTOTAL_API_KEY:-}
+      - PHISHTANK_API_KEY=${PHISHTANK_API_KEY:-}
+      - LOG_LEVEL=info
+      - PORT=3002
+      - SYNC_INTERVAL_MINUTES=${SYNC_INTERVAL_MINUTES:-60}
+      - BLOOM_FILTER_SIZE=${BLOOM_FILTER_SIZE:-1000000}
+      - BLOOM_FILTER_FALSE_POSITIVE_RATE=${BLOOM_FILTER_FALSE_POSITIVE_RATE:-0.01}
+      - ENABLE_THREAT_INTEL=${ENABLE_THREAT_INTEL:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  learning-pipeline:
+    profiles:
+      - full
+    build:
+      context: .
+      dockerfile: ./core-services/learning-pipeline/Dockerfile
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/phishing_detection
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - S3_BUCKET_MODELS=${S3_BUCKET_MODELS:-}
+      - S3_BUCKET_TRAINING=${S3_BUCKET_TRAINING:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  extension-api:
+    profiles:
+      - full
+    build:
+      context: .
+      dockerfile: ./core-services/extension-api/Dockerfile
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - REDIS_URL=redis://redis:6379
+      - DETECTION_API_URL=http://detection-api:3001
+      - LOG_LEVEL=info
+      - PORT=3003
+    depends_on:
+      redis:
+        condition: service_healthy
+      detection-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  sandbox-service:
+    profiles:
+      - full
+    build:
+      context: .
+      dockerfile: ./core-services/sandbox-service/Dockerfile
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/phishing_detection
+      - REDIS_URL=redis://redis:6379
+      - SANDBOX_PROVIDER=${SANDBOX_PROVIDER:-anyrun}
+      - CUCKOO_SANDBOX_URL=${CUCKOO_SANDBOX_URL:-}
+      - CUCKOO_API_KEY=${CUCKOO_API_KEY:-}
+      - ANYRUN_API_KEY=${ANYRUN_API_KEY:-}
+      - SANDBOX_TIMEOUT=${SANDBOX_TIMEOUT:-300}
+      - SANDBOX_POLL_INTERVAL=${SANDBOX_POLL_INTERVAL:-10}
+      - SANDBOX_QUEUE_CONCURRENCY=${SANDBOX_QUEUE_CONCURRENCY:-5}
+      - DETECTION_API_URL=http://detection-api:3001
+      - LOG_LEVEL=info
+      - PORT=3004
+      - ENABLE_SANDBOX_ANALYSIS=${ENABLE_SANDBOX_ANALYSIS:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  nlp-service:
+    build:
+      context: ./ml-services/nlp-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - MODEL_DIR=/app/models
+      - REDIS_URL=redis://redis:6379
+      - MONGODB_URL=mongodb://mongodb:27017/phishing_detection
+      - LOG_LEVEL=info
+      - INFERENCE_DEVICE=${INFERENCE_DEVICE:-cpu}
+      - BATCH_SIZE=${BATCH_SIZE:-32}
+      - MAX_SEQUENCE_LENGTH=${MAX_SEQUENCE_LENGTH:-512}
+    volumes:
+      - ./ml-services/nlp-service:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  url-service:
+    build:
+      context: ./ml-services/url-service
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - MODEL_DIR=/app/models
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+      - INFERENCE_DEVICE=${INFERENCE_DEVICE:-cpu}
+      - DNS_TIMEOUT=${DNS_TIMEOUT:-5}
+      - WHOIS_TIMEOUT=${WHOIS_TIMEOUT:-10}
+      - MAX_REDIRECTS=${MAX_REDIRECTS:-10}
+      - ENABLE_SSL_VERIFY=${ENABLE_SSL_VERIFY:-true}
+    volumes:
+      - ./ml-services/url-service:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  visual-service:
+    build:
+      context: ./ml-services/visual-service
+      dockerfile: Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - MODEL_DIR=/app/models
+      - REDIS_URL=redis://redis:6379
+      - S3_BUCKET=${S3_BUCKET_NAME:-}
+      - AWS_REGION=${AWS_REGION:-ap-south-1}
+      - LOG_LEVEL=info
+      - INFERENCE_DEVICE=${INFERENCE_DEVICE:-cpu}
+      - BROWSER_TIMEOUT=${BROWSER_TIMEOUT:-30000}
+      - SCREENSHOT_QUALITY=${SCREENSHOT_QUALITY:-80}
+    volumes:
+      - ./ml-services/visual-service:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local
+  mongo_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  default:
+    name: phishing-detection-network
+    driver: bridge
+
